@@ -1,7 +1,8 @@
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { OPENAI_LANGS, SONIOX_LANGS, type Language } from "@/src/lib/languages";
+import { clearAllPrefs, clearAllSecureKeys } from "@/src/lib/secure-keys";
 import { useSettings } from "@/src/state/settings-context";
 import type { Engine, LangCode } from "@/src/types";
 
@@ -85,6 +86,32 @@ export default function SettingsScreen() {
             Billed to your key. OpenAI Realtime ≈ $4/hr.
           </Text>
         </Section>
+
+        <Pressable
+          onPress={() => {
+            Alert.alert(
+              "Clear all data?",
+              "This wipes both API keys and saved preferences.",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Clear",
+                  style: "destructive",
+                  onPress: async () => {
+                    await Promise.all([clearAllSecureKeys(), clearAllPrefs()]);
+                    setSonioxKey("");
+                    setOpenaiKey("");
+                  },
+                },
+              ],
+            );
+          }}
+          className="mt-4 py-3 rounded-lg border border-red-300 dark:border-red-800 items-center"
+        >
+          <Text className="text-red-600 dark:text-red-400 font-medium">
+            Clear all data
+          </Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );

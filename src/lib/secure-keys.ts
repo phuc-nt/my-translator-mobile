@@ -31,3 +31,32 @@ export async function clearAllSecureKeys(): Promise<void> {
     (Object.keys(KEYS) as SecureKeyName[]).map((k) => clearSecureKey(k)),
   );
 }
+
+// Non-secret app preferences (engine, languages, font size, panel mode).
+// SecureStore works fine for these too — we just don't need encryption-grade
+// storage; YAGNI says one storage layer beats pulling in AsyncStorage.
+const PREF_KEYS = {
+  engine: "pref.engine",
+  sourceLang: "pref.sourceLang",
+  targetLang: "pref.targetLang",
+  panelMode: "pref.panelMode",
+  fontSize: "pref.fontSize",
+} as const;
+
+export type PrefName = keyof typeof PREF_KEYS;
+
+export async function getPref(name: PrefName): Promise<string | null> {
+  return SecureStore.getItemAsync(PREF_KEYS[name]);
+}
+
+export async function setPref(name: PrefName, value: string): Promise<void> {
+  await SecureStore.setItemAsync(PREF_KEYS[name], value);
+}
+
+export async function clearAllPrefs(): Promise<void> {
+  await Promise.all(
+    (Object.keys(PREF_KEYS) as PrefName[]).map((k) =>
+      SecureStore.deleteItemAsync(PREF_KEYS[k]),
+    ),
+  );
+}

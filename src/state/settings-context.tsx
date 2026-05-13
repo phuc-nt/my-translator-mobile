@@ -1,6 +1,17 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 
-import { getSecureKey, setSecureKey } from "@/src/lib/secure-keys";
+import {
+  getPref,
+  getSecureKey,
+  setPref,
+  setSecureKey,
+} from "@/src/lib/secure-keys";
 import type { Engine, LangCode, PanelMode } from "@/src/types";
 
 interface SettingsState {
@@ -42,16 +53,33 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const [sonioxKey, openaiKey] = await Promise.all([
+      const [
+        sonioxKey,
+        openaiKey,
+        engine,
+        sourceLang,
+        targetLang,
+        panelMode,
+        fontSize,
+      ] = await Promise.all([
         getSecureKey("soniox"),
         getSecureKey("openai"),
+        getPref("engine"),
+        getPref("sourceLang"),
+        getPref("targetLang"),
+        getPref("panelMode"),
+        getPref("fontSize"),
       ]);
-      setState((s) => ({
-        ...s,
+      setState({
         sonioxKey: sonioxKey ?? "",
         openaiKey: openaiKey ?? "",
+        engine: engine === "openai" ? "openai" : "soniox",
+        sourceLang: sourceLang ?? DEFAULT_STATE.sourceLang,
+        targetLang: targetLang ?? DEFAULT_STATE.targetLang,
+        panelMode: panelMode === "dual" ? "dual" : "single",
+        fontSize: fontSize ? parseInt(fontSize, 10) || DEFAULT_STATE.fontSize : DEFAULT_STATE.fontSize,
         loaded: true,
-      }));
+      });
     })();
   }, []);
 
@@ -63,11 +91,26 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     await setSecureKey("openai", v);
     setState((s) => ({ ...s, openaiKey: v }));
   };
-  const setEngine = (v: Engine) => setState((s) => ({ ...s, engine: v }));
-  const setSourceLang = (v: LangCode) => setState((s) => ({ ...s, sourceLang: v }));
-  const setTargetLang = (v: LangCode) => setState((s) => ({ ...s, targetLang: v }));
-  const setPanelMode = (v: PanelMode) => setState((s) => ({ ...s, panelMode: v }));
-  const setFontSize = (v: number) => setState((s) => ({ ...s, fontSize: v }));
+  const setEngine = (v: Engine) => {
+    setState((s) => ({ ...s, engine: v }));
+    setPref("engine", v).catch(() => {});
+  };
+  const setSourceLang = (v: LangCode) => {
+    setState((s) => ({ ...s, sourceLang: v }));
+    setPref("sourceLang", v).catch(() => {});
+  };
+  const setTargetLang = (v: LangCode) => {
+    setState((s) => ({ ...s, targetLang: v }));
+    setPref("targetLang", v).catch(() => {});
+  };
+  const setPanelMode = (v: PanelMode) => {
+    setState((s) => ({ ...s, panelMode: v }));
+    setPref("panelMode", v).catch(() => {});
+  };
+  const setFontSize = (v: number) => {
+    setState((s) => ({ ...s, fontSize: v }));
+    setPref("fontSize", String(v)).catch(() => {});
+  };
 
   return (
     <SettingsContext.Provider

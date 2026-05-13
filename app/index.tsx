@@ -1,70 +1,97 @@
 import { Link } from "expo-router";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useEffect } from "react";
+import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
 
+import { TranscriptStream } from "@/src/components/transcript-stream";
 import { useSession } from "@/src/state/session-context";
 import { useSettings } from "@/src/state/settings-context";
 
+const FONT_MIN = 14;
+const FONT_MAX = 32;
+
 export default function TranslateScreen() {
-  const { status, rows, start, stop } = useSession();
-  const { engine, sourceLang, targetLang, fontSize, loaded } = useSettings();
+  const { status, rows, errorMessage, start, stop } = useSession();
+  const {
+    engine,
+    sourceLang,
+    targetLang,
+    fontSize,
+    panelMode,
+    sonioxKey,
+    openaiKey,
+    loaded,
+    setFontSize,
+    setPanelMode,
+  } = useSettings();
 
   const isLive = status === "streaming" || status === "connecting";
+  const requiredKey = engine === "soniox" ? sonioxKey : openaiKey;
+
+  // First-launch: if settings are loaded and the active engine has no key,
+  // bounce the user to Settings so they can paste one before anything else.
+  useEffect(() => {
+    if (loaded && !requiredKey) {
+      router.push("/settings");
+    }
+  }, [loaded, requiredKey]);
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-zinc-950" edges={["top"]}>
-      <View className="flex-row items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
-        <View className="flex-row items-center gap-2">
-          <View
-            className={
-              status === "streaming"
-                ? "w-2 h-2 rounded-full bg-green-500"
-                : status === "connecting"
-                  ? "w-2 h-2 rounded-full bg-yellow-500"
-                  : status === "error"
-                    ? "w-2 h-2 rounded-full bg-red-500"
-                    : "w-2 h-2 rounded-full bg-zinc-400"
-            }
-          />
-          <Text className="text-zinc-900 dark:text-zinc-100 font-medium">
-            {engine === "soniox" ? "Soniox" : "OpenAI"} · {sourceLang} → {targetLang}
+      <Header
+        engine={engine}
+        sourceLang={sourceLang}
+        targetLang={targetLang}
+        status={status}
+      />
+
+      <View className="flex-row items-center justify-between px-4 py-2 border-b border-zinc-100 dark:border-zinc-900">
+        <Pressable
+          onPress={() => setPanelMode(panelMode === "single" ? "dual" : "single")}
+          className="px-2 py-1 rounded-md border border-zinc-300 dark:border-zinc-700"
+        >
+          <Text className="text-zinc-700 dark:text-zinc-300 text-xs">
+            {panelMode === "dual" ? "Single panel" : "Dual panel"}
           </Text>
+        </Pressable>
+
+        <View className="flex-row items-center gap-2">
+          <FontButton
+            label="A−"
+            onPress={() => setFontSize(Math.max(FONT_MIN, fontSize - 2))}
+          />
+          <Text className="text-zinc-500 dark:text-zinc-400 text-xs w-7 text-center">
+            {fontSize}
+          </Text>
+          <FontButton
+            label="A+"
+            onPress={() => setFontSize(Math.min(FONT_MAX, fontSize + 2))}
+          />
         </View>
-        <Link href="/settings" asChild>
-          <Pressable hitSlop={8}>
-            <Text className="text-zinc-900 dark:text-zinc-100 text-2xl">⚙️</Text>
-          </Pressable>
-        </Link>
       </View>
 
-      <ScrollView className="flex-1 px-4 py-3">
-        {!loaded ? (
+      {errorMessage ? (
+        <View className="px-4 py-2 bg-red-50 dark:bg-red-950 border-b border-red-100 dark:border-red-900">
+          <Text className="text-red-700 dark:text-red-300 text-xs">{errorMessage}</Text>
+        </View>
+      ) : null}
+
+      {!loaded ? (
+        <View className="flex-1 items-center justify-center">
           <Text className="text-zinc-500">Loading…</Text>
-        ) : rows.length === 0 ? (
-          <Text className="text-zinc-500">
-            Tap Start to begin translating.
+        </View>
+      ) : rows.length === 0 ? (
+        <View className="flex-1 items-center justify-center px-8">
+          <Text className="text-zinc-500 text-center">
+            {requiredKey
+              ? "Tap Start to begin translating."
+              : "Add an API key in Settings to get started."}
           </Text>
-        ) : (
-          rows.map((r) => (
-            <View key={r.id} className="mb-3">
-              {r.source ? (
-                <Text
-                  className="text-zinc-500 dark:text-zinc-400 mb-1"
-                  style={{ fontSize: Math.max(12, fontSize - 4) }}
-                >
-                  {r.source}
-                </Text>
-              ) : null}
-              <Text
-                className="text-zinc-900 dark:text-zinc-100"
-                style={{ fontSize }}
-              >
-                {r.translation}
-              </Text>
-            </View>
-          ))
-        )}
-      </ScrollView>
+        </View>
+      ) : (
+        <TranscriptStream rows={rows} fontSize={fontSize} panelMode={panelMode} />
+      )}
 
       <View className="px-4 py-4 border-t border-zinc-200 dark:border-zinc-800">
         <Pressable
@@ -87,5 +114,54 @@ export default function TranslateScreen() {
         </Pressable>
       </View>
     </SafeAreaView>
+  );
+}
+
+function Header({
+  engine,
+  sourceLang,
+  targetLang,
+  status,
+}: {
+  engine: string;
+  sourceLang: string;
+  targetLang: string;
+  status: string;
+}) {
+  const dot =
+    status === "streaming"
+      ? "w-2 h-2 rounded-full bg-green-500"
+      : status === "connecting"
+        ? "w-2 h-2 rounded-full bg-yellow-500"
+        : status === "error"
+          ? "w-2 h-2 rounded-full bg-red-500"
+          : "w-2 h-2 rounded-full bg-zinc-400";
+  return (
+    <View className="flex-row items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
+      <View className="flex-row items-center gap-2">
+        <View className={dot} />
+        <Text className="text-zinc-900 dark:text-zinc-100 font-medium">
+          {engine === "soniox" ? "Soniox" : "OpenAI"} · {sourceLang} → {targetLang}
+        </Text>
+      </View>
+      <Link href="/settings" asChild>
+        <Pressable hitSlop={8}>
+          <Text className="text-zinc-900 dark:text-zinc-100 text-2xl">⚙️</Text>
+        </Pressable>
+      </Link>
+    </View>
+  );
+}
+
+function FontButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className="w-9 h-7 rounded-md border border-zinc-300 dark:border-zinc-700 items-center justify-center"
+    >
+      <Text className="text-zinc-700 dark:text-zinc-300 text-xs font-semibold">
+        {label}
+      </Text>
+    </Pressable>
   );
 }
