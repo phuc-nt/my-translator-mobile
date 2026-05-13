@@ -7,8 +7,13 @@ import {
   type ReactNode,
 } from "react";
 
+import {
+  OpenAiRealtimeClient,
+  type OpenAiStatus,
+} from "@/src/engines/openai-realtime-client";
 import { SonioxClient, type SonioxStatus } from "@/src/engines/soniox-client";
 import { AudioCapture } from "@/src/lib/audio-capture";
+import { OpenAiAudioOutputQueue } from "@/src/lib/openai-audio-output-queue";
 import type { SessionStatus, TranscriptRow } from "@/src/types";
 import { useSettings } from "@/src/state/settings-context";
 
@@ -38,7 +43,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const rowsRef = useRef<TranscriptRow[]>([]);
   const captureRef = useRef<AudioCapture | null>(null);
   const sonioxRef = useRef<SonioxClient | null>(null);
-  // Latest provisional row id we are mutating in place (cleared on final).
+  const openaiRef = useRef<OpenAiRealtimeClient | null>(null);
+  const outputQueueRef = useRef<OpenAiAudioOutputQueue | null>(null);
+
+  // The id of the in-progress provisional row, if any (cleared on final).
   const provisionalIdRef = useRef<string | null>(null);
 
   const replaceRows = (next: TranscriptRow[]) => {
@@ -55,7 +63,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const id = provisionalIdRef.current;
     if (!text) {
       if (!id) return;
-      // Drop the provisional row entirely on clear signal.
       const next = rowsRef.current.filter((r) => r.id !== id);
       provisionalIdRef.current = null;
       replaceRows(next);
@@ -89,6 +96,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return "idle";
   };
 
+  const mapOpenAiStatus = (s: OpenAiStatus): SessionStatus => {
+    if (s === "connecting") return "connecting";
+    if (s === "ready") return "streaming";
+    if (s === "error") return "error";
+    return "idle";
+  };
+
   const cleanup = async () => {
     try {
       sonioxRef.current?.disconnect();
@@ -96,30 +110,37 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       /* ignore */
     }
     sonioxRef.current = null;
+
+    try {
+      openaiRef.current?.disconnect();
+    } catch {
+      /* ignore */
+    }
+    openaiRef.current = null;
+
+    try {
+      await outputQueueRef.current?.close();
+    } catch {
+      /* ignore */
+    }
+    outputQueueRef.current = null;
+
     try {
       await captureRef.current?.stop();
     } catch {
       /* ignore */
     }
     captureRef.current = null;
+
     provisionalIdRef.current = null;
   };
 
-  const start = async () => {
-    if (status === "streaming" || status === "connecting") return;
-    setErrorMessage(null);
-
-    if (engine !== "soniox") {
-      setStatus("error");
-      setErrorMessage("OpenAI Realtime — coming in phase 3");
-      return;
-    }
+  const startSoniox = async (): Promise<void> => {
     if (!sonioxKey) {
       setStatus("error");
       setErrorMessage("Soniox API key missing — open Settings");
       return;
     }
-
     setStatus("connecting");
 
     const capture = new AudioCapture(16000);
@@ -134,8 +155,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       onStatusChange: (s) => setStatus(mapSonioxStatus(s)),
       onError: (msg) => setErrorMessage(msg),
       onOriginal: (text) => {
-        // Original (source) text — attach as `source` on the most recent translation
-        // row if it is missing one; else append a new row.
         const last = rowsRef.current[rowsRef.current.length - 1];
         if (last && !last.isProvisional && !last.source) {
           const next = [...rowsRef.current];
@@ -158,9 +177,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           timestamp: Date.now(),
         });
       },
-      onProvisional: (text) => {
-        upsertProvisional(text);
-      },
+      onProvisional: (text) => upsertProvisional(text),
     });
 
     sonioxRef.current = client;
@@ -182,6 +199,89 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const startOpenAi = async (): Promise<void> => {
+    if (!openaiKey) {
+      setStatus("error");
+      setErrorMessage("OpenAI API key missing — open Settings");
+      return;
+    }
+    setStatus("connecting");
+
+    const capture = new AudioCapture(24000);
+    const granted = await capture.requestPermission();
+    if (!granted) {
+      setStatus("error");
+      setErrorMessage("Microphone permission denied");
+      return;
+    }
+
+    const queue = new OpenAiAudioOutputQueue();
+    const client = new OpenAiRealtimeClient({
+      onStatusChange: (s, msg) => {
+        setStatus(mapOpenAiStatus(s));
+        if (msg && s === "error") setErrorMessage(msg);
+      },
+      onError: (_code, message) => {
+        if (message) setErrorMessage(message);
+      },
+      onClosed: () => {
+        // onclose runs after disconnect() too — only surface unintended closes.
+      },
+      onSourceProvisional: (text) => {
+        // For OpenAI: source provisional shows under translation; we mirror
+        // Soniox's "source on most recent row" pattern by stashing source on
+        // the active provisional row, or buffering until segment fires.
+        const id = provisionalIdRef.current;
+        if (!id) return;
+        const next = rowsRef.current.map((r) =>
+          r.id === id ? { ...r, source: text } : r,
+        );
+        replaceRows(next);
+      },
+      onProvisional: (text) => upsertProvisional(text),
+      onSegment: (src, tgt) => {
+        finalizeProvisional();
+        if (!src && !tgt) return;
+        pushRow({
+          id: `seg-${Date.now()}`,
+          source: src || undefined,
+          translation: tgt,
+          timestamp: Date.now(),
+        });
+      },
+    });
+
+    openaiRef.current = client;
+    outputQueueRef.current = queue;
+    captureRef.current = capture;
+
+    try {
+      await capture.start((pcm) => client.sendAudio(pcm));
+    } catch (err) {
+      setStatus("error");
+      setErrorMessage((err as Error).message);
+      await cleanup();
+      return;
+    }
+
+    client.connect(
+      {
+        apiKey: openaiKey,
+        sourceLanguage: sourceLang,
+        targetLanguage: targetLang,
+        audioOutput: true,
+      },
+      queue,
+    );
+  };
+
+  const start = async () => {
+    if (status === "streaming" || status === "connecting") return;
+    setErrorMessage(null);
+    if (engine === "soniox") await startSoniox();
+    else await startOpenAi();
+  };
+
   const stop = async () => {
     setStatus("stopping");
     await cleanup();
@@ -194,16 +294,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setRows([]);
   };
 
-  // Best-effort cleanup if the provider unmounts mid-session.
   useEffect(() => {
     return () => {
       cleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Silence unused-var warning for openaiKey until phase 3.
-  void openaiKey;
 
   return (
     <SessionContext.Provider
