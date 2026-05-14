@@ -27,9 +27,16 @@ interface SessionActions {
   start: () => Promise<void>;
   stop: () => Promise<void>;
   clear: () => void;
+  setMuted: (m: boolean) => void;
 }
 
-const SessionContext = createContext<(SessionState & SessionActions) | null>(null);
+interface SessionExtras {
+  muted: boolean;
+}
+
+const SessionContext = createContext<
+  (SessionState & SessionActions & SessionExtras) | null
+>(null);
 
 const MAX_ROWS = 200;
 
@@ -39,6 +46,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<SessionStatus>("idle");
   const [rows, setRows] = useState<TranscriptRow[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Default muted: most usage is reading-only at events, and TTS audio costs
+  // extra. User can unmute via the header speaker icon when needed.
+  const [muted, setMutedState] = useState(true);
 
   const rowsRef = useRef<TranscriptRow[]>([]);
   const captureRef = useRef<AudioCapture | null>(null);
@@ -85,8 +95,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Remove the in-flight provisional row (if any) so the final segment that
+  // follows doesn't visually duplicate it. Without this, Stop showed the same
+  // text twice — once gray (provisional, still in list) and once white (final).
   const finalizeProvisional = () => {
+    const id = provisionalIdRef.current;
     provisionalIdRef.current = null;
+    if (!id) return;
+    const next = rowsRef.current.filter((r) => r.id !== id);
+    if (next.length !== rowsRef.current.length) replaceRows(next);
   };
 
   const mapSonioxStatus = (s: SonioxStatus): SessionStatus => {
@@ -104,6 +121,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   };
 
   const cleanup = async () => {
+    // Silence late callbacks BEFORE disconnect so events that arrive between
+    // ws.close() and the OS actually tearing the socket down don't push
+    // ghost provisional rows after the user already hit Stop.
+    if (sonioxRef.current) sonioxRef.current.callbacks = {};
+    if (openaiRef.current) openaiRef.current.callbacks = {};
+
     try {
       sonioxRef.current?.disconnect();
     } catch {
@@ -133,6 +156,28 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     captureRef.current = null;
 
     provisionalIdRef.current = null;
+
+    // Promote any leftover provisional rows to final (keep the text, drop the
+    // gray opacity). The engine's flushPending may already have emitted a
+    // matching final segment — dedupe by text to avoid showing the same line
+    // twice once in white once in gray.
+    const current = rowsRef.current;
+    const finalsSet = new Set(
+      current
+        .filter((r) => !r.isProvisional && r.translation)
+        .map((r) => r.translation),
+    );
+    const next = current
+      .filter(
+        (r) => !r.isProvisional || (r.translation && !finalsSet.has(r.translation)),
+      )
+      .map((r) => (r.isProvisional ? { ...r, isProvisional: false } : r));
+    if (
+      next.length !== current.length ||
+      next.some((r, i) => r !== current[i])
+    ) {
+      replaceRows(next);
+    }
   };
 
   const startSoniox = async (): Promise<void> => {
@@ -264,12 +309,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    queue.setMuted(muted);
+    client.setMuted(muted);
     client.connect(
       {
         apiKey: openaiKey,
         sourceLanguage: sourceLang,
         targetLanguage: targetLang,
-        audioOutput: true,
+        audioOutput: !muted,
       },
       queue,
     );
@@ -292,6 +339,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     rowsRef.current = [];
     provisionalIdRef.current = null;
     setRows([]);
+    setErrorMessage(null);
+  };
+
+  const setMuted = (m: boolean) => {
+    setMutedState(m);
+    openaiRef.current?.setMuted(m);
+    outputQueueRef.current?.setMuted(m);
   };
 
   useEffect(() => {
@@ -303,7 +357,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   return (
     <SessionContext.Provider
-      value={{ status, rows, errorMessage, start, stop, clear }}
+      value={{ status, rows, errorMessage, muted, start, stop, clear, setMuted }}
     >
       {children}
     </SessionContext.Provider>

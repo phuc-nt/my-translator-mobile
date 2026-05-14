@@ -11,8 +11,10 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.phucnt.mytranslator",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Allow My Translator to use the microphone for live translation."
+        "NSMicrophoneUsageDescription": "Allow My Translator to use the microphone for live translation.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

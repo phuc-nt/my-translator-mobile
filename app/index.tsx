@@ -12,7 +12,8 @@ const FONT_MIN = 14;
 const FONT_MAX = 32;
 
 export default function TranslateScreen() {
-  const { status, rows, errorMessage, start, stop } = useSession();
+  const { status, rows, errorMessage, muted, start, stop, clear, setMuted } =
+    useSession();
   const {
     engine,
     sourceLang,
@@ -44,17 +45,33 @@ export default function TranslateScreen() {
         sourceLang={sourceLang}
         targetLang={targetLang}
         status={status}
+        showMute={engine === "openai"}
+        muted={muted}
+        onToggleMute={() => setMuted(!muted)}
       />
 
       <View className="flex-row items-center justify-between px-4 py-2 border-b border-zinc-100 dark:border-zinc-900">
-        <Pressable
-          onPress={() => setPanelMode(panelMode === "single" ? "dual" : "single")}
-          className="px-2 py-1 rounded-md border border-zinc-300 dark:border-zinc-700"
-        >
-          <Text className="text-zinc-700 dark:text-zinc-300 text-xs">
-            {panelMode === "dual" ? "Single panel" : "Dual panel"}
-          </Text>
-        </Pressable>
+        <View className="flex-row items-center gap-2">
+          <Pressable
+            onPress={() => setPanelMode(panelMode === "single" ? "dual" : "single")}
+            className="px-2 py-1 rounded-md border border-zinc-300 dark:border-zinc-700"
+          >
+            <Text className="text-zinc-700 dark:text-zinc-300 text-xs">
+              {panelMode === "dual" ? "Single panel" : "Dual panel"}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={clear}
+            disabled={rows.length === 0}
+            className={
+              rows.length === 0
+                ? "px-2 py-1 rounded-md border border-zinc-200 dark:border-zinc-800 opacity-50"
+                : "px-2 py-1 rounded-md border border-zinc-300 dark:border-zinc-700"
+            }
+          >
+            <Text className="text-zinc-700 dark:text-zinc-300 text-xs">Clear</Text>
+          </Pressable>
+        </View>
 
         <View className="flex-row items-center gap-2">
           <FontButton
@@ -122,11 +139,17 @@ function Header({
   sourceLang,
   targetLang,
   status,
+  showMute,
+  muted,
+  onToggleMute,
 }: {
   engine: string;
   sourceLang: string;
   targetLang: string;
   status: string;
+  showMute: boolean;
+  muted: boolean;
+  onToggleMute: () => void;
 }) {
   const dot =
     status === "streaming"
@@ -141,14 +164,21 @@ function Header({
       <View className="flex-row items-center gap-2">
         <View className={dot} />
         <Text className="text-zinc-900 dark:text-zinc-100 font-medium">
-          {engine === "soniox" ? "Soniox" : "OpenAI"} · {sourceLang} → {targetLang}
+          {engine === "soniox" ? "Soniox" : "OpenAI"} · auto → {targetLang}
         </Text>
       </View>
-      <Link href="/settings" asChild>
-        <Pressable hitSlop={8}>
-          <Text className="text-zinc-900 dark:text-zinc-100 text-2xl">⚙️</Text>
-        </Pressable>
-      </Link>
+      <View className="flex-row items-center gap-3">
+        {showMute ? (
+          <Pressable onPress={onToggleMute} hitSlop={8}>
+            <Text className="text-2xl">{muted ? "🔇" : "🔊"}</Text>
+          </Pressable>
+        ) : null}
+        <Link href="/settings" asChild>
+          <Pressable hitSlop={8}>
+            <Text className="text-zinc-900 dark:text-zinc-100 text-2xl">⚙️</Text>
+          </Pressable>
+        </Link>
+      </View>
     </View>
   );
 }

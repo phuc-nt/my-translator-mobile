@@ -82,7 +82,6 @@ export class OpenAiRealtimeClient {
       ws = new WSCtor(OPENAI_REALTIME_URL, null, {
         headers: {
           Authorization: `Bearer ${cfg.apiKey}`,
-          "OpenAI-Beta": "realtime=v1",
         },
       });
     } catch (err) {
@@ -187,15 +186,20 @@ export class OpenAiRealtimeClient {
   }
 
   private handleServerEvent(data: Record<string, unknown>): void {
-    const type = data.type as string | undefined;
-    if (!type) return;
+    const rawType = data.type as string | undefined;
+    if (!rawType) return;
+    if (__DEV__) console.log("[openai-realtime] evt:", rawType);
+    // Server emits some events with `session.` prefix and others without —
+    // normalize so we match either form.
+    const type = rawType.startsWith("session.") ? rawType.slice(8) : rawType;
 
     switch (type) {
-      case "session.created":
-      case "session.updated":
+      case "created":
+      case "updated":
         break;
 
-      case "session.input_transcript.delta": {
+      case "input_transcript.delta":
+      case "conversation.item.input_audio_transcription.delta": {
         const delta = (data.delta as string) ?? "";
         if (delta) {
           this.sourceBuffer += delta;
@@ -204,8 +208,9 @@ export class OpenAiRealtimeClient {
         break;
       }
 
-      case "session.input_transcript.done":
-      case "session.input_audio_transcription.completed": {
+      case "input_transcript.done":
+      case "input_audio_transcription.completed":
+      case "conversation.item.input_audio_transcription.completed": {
         const text = (data.transcript as string) ?? (data.text as string) ?? "";
         if (text) {
           this.pendingSourceFinals.push(text);
@@ -215,7 +220,9 @@ export class OpenAiRealtimeClient {
         break;
       }
 
-      case "session.output_transcript.delta": {
+      case "output_transcript.delta":
+      case "response.output_text.delta":
+      case "response.text.delta": {
         const delta = (data.delta as string) ?? "";
         if (delta) {
           this.provisionalBuffer += delta;
@@ -224,8 +231,11 @@ export class OpenAiRealtimeClient {
         break;
       }
 
-      case "session.output_transcript.done": {
-        const text = (data.transcript as string) ?? "";
+      case "output_transcript.done":
+      case "response.output_text.done":
+      case "response.text.done": {
+        const text =
+          (data.transcript as string) ?? (data.text as string) ?? this.provisionalBuffer;
         const sourceText = this.pendingSourceFinals.shift() ?? this.sourceBuffer;
         this.provisionalBuffer = "";
         this.sourceBuffer = "";
@@ -233,13 +243,15 @@ export class OpenAiRealtimeClient {
         break;
       }
 
-      case "session.output_audio.delta": {
+      case "output_audio.delta":
+      case "response.output_audio.delta":
+      case "response.audio.delta": {
         const b64 = data.delta as string | undefined;
         if (b64 && !this.muted) this.outputQueue?.push(b64);
         break;
       }
 
-      case "session.closed":
+      case "closed":
         this.callbacks.onClosed?.("session.closed");
         break;
 

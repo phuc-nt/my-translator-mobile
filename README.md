@@ -6,7 +6,9 @@ Captures phone mic at conferences/lectures and shows live translation.
 Two engines:
 
 - **Soniox** (~$0.12/hr, text-only)
-- **OpenAI Realtime** (~$4/hr, text + native voice playback)
+- **OpenAI Realtime** (~$4/hr, text + optional voice playback — muted by default, toggle in header)
+
+Source language is auto-detected. You only pick a target.
 
 Bring-your-own API key — keys are stored locally in iOS Keychain / Android Keystore via `expo-secure-store`. No backend, no telemetry, no transcript history.
 
@@ -33,8 +35,9 @@ Bring-your-own API key — keys are stored locally in iOS Keychain / Android Key
    - **Soniox API key** — get one from <https://console.soniox.com> (cheap, text-only, recommended).
    - **OpenAI API key** — get one from <https://platform.openai.com/api-keys> (more expensive but plays voice).
    - **Tip:** Set a low monthly spending cap on your OpenAI key.
-3. Pick your **source** and **target** language.
+3. Pick your **target** language (source is auto-detected).
 4. Back on the main screen, tap **Start**, allow the microphone prompt, and start speaking.
+5. On OpenAI engine, tap 🔇 in the header to unmute TTS audio if you want voice output.
 
 ---
 

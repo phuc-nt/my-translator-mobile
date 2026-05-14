@@ -1,7 +1,16 @@
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { OPENAI_LANGS, SONIOX_LANGS, type Language } from "@/src/lib/languages";
+import { OPENAI_LANGS, type Language } from "@/src/lib/languages";
 import { clearAllPrefs, clearAllSecureKeys } from "@/src/lib/secure-keys";
 import { useSettings } from "@/src/state/settings-context";
 import type { Engine, LangCode } from "@/src/types";
@@ -11,20 +20,29 @@ export default function SettingsScreen() {
     sonioxKey,
     openaiKey,
     engine,
-    sourceLang,
     targetLang,
     setSonioxKey,
     setOpenaiKey,
     setEngine,
-    setSourceLang,
     setTargetLang,
   } = useSettings();
 
-  const langs: Language[] = engine === "soniox" ? SONIOX_LANGS : OPENAI_LANGS;
+  // Both engines auto-detect source language. Share OpenAI's target list for
+  // consistency (Soniox supports the same superset for translation targets).
+  const langs: Language[] = OPENAI_LANGS;
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-zinc-950" edges={["bottom"]}>
-      <ScrollView className="flex-1 px-4 py-4" contentContainerClassName="gap-5">
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+      >
+      <ScrollView
+        className="flex-1 px-4 py-4"
+        contentContainerClassName="gap-5 pb-24"
+        keyboardShouldPersistTaps="handled"
+      >
         <Section title="Engine">
           <Row>
             <Choice
@@ -45,17 +63,11 @@ export default function SettingsScreen() {
           </Text>
         </Section>
 
-        <Section title="Source language">
-          <LangPicker
-            value={sourceLang}
-            onChange={setSourceLang}
-            langs={langs}
-            includeAuto={engine === "soniox"}
-          />
-        </Section>
-
         <Section title="Target language">
           <LangPicker value={targetLang} onChange={setTargetLang} langs={langs} />
+          <Text className="text-zinc-500 text-xs mt-1">
+            Source language is auto-detected.
+          </Text>
         </Section>
 
         <Section title="Soniox API key">
@@ -113,6 +125,7 @@ export default function SettingsScreen() {
           </Text>
         </Pressable>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -167,19 +180,14 @@ function LangPicker({
   value,
   onChange,
   langs,
-  includeAuto = false,
 }: {
   value: LangCode;
   onChange: (v: LangCode) => void;
   langs: Language[];
-  includeAuto?: boolean;
 }) {
-  const options: Language[] = includeAuto
-    ? [{ code: "auto", name: "Auto-detect" }, ...langs]
-    : langs;
   return (
     <Row>
-      {options.map((l) => (
+      {langs.map((l) => (
         <Choice
           key={l.code}
           label={l.name}
