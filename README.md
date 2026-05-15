@@ -24,9 +24,9 @@ Bring-your-own API key — keys are stored locally in iOS Keychain / Android Key
 
 ### Android — APK from GitHub Releases
 
-1. On your Android phone, open the latest [Release](https://github.com/phuc-nt/my-translator-mobile/releases) and download the `.apk` artifact.
+1. On your Android phone, open the latest [Release](https://github.com/phuc-nt/my-translator-mobile/releases/latest) and download the `.apk` asset (or use the [direct download](https://github.com/phuc-nt/my-translator-mobile/releases/download/v0.1.0-android/my-translator-0.1.0.apk)).
 2. When prompted, allow your browser to install unknown apps (Settings → Apps → Your browser → Install unknown apps).
-3. Open the downloaded APK and tap **Install**.
+3. Open the downloaded APK and tap **Install**. If Play Protect warns, tap **Install anyway**.
 
 ### First-run setup
 
