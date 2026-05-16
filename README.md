@@ -37,6 +37,8 @@ A lightweight stand-in for a human cabin (booth) interpreter when there isn't on
 2. Paste **one** API key:
    - **Soniox** — get one at <https://console.soniox.com>. Cheap (~$0.12/hr), text only. **Recommended.**
    - **OpenAI** — get one at <https://platform.openai.com/api-keys>. ~$4/hr, adds spoken voice. Tip: set a low monthly cap.
+
+   Hướng dẫn chi tiết bằng tiếng Việt: [docs/api-key-guide-vi.md](docs/api-key-guide-vi.md)
 3. Pick your **target** language (the spoken language is auto-detected).
 4. Back on the main screen, tap **Start**, allow the microphone, and listen.
 5. On OpenAI: tap 🔇 in the header to unmute voice output.
