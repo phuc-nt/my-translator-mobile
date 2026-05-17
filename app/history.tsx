@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Alert, FlatList, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { BackButton } from "@/src/components/back-button";
 import { HistoryListItem } from "@/src/components/history-list-item";
 import { HistorySearchBar } from "@/src/components/history-search-bar";
 import { SessionDetailView } from "@/src/components/session-detail-view";
@@ -83,13 +84,17 @@ export default function HistoryScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-zinc-950" edges={["bottom"]}>
+    <SafeAreaView
+      className="flex-1 bg-white dark:bg-zinc-950"
+      edges={["top", "bottom"]}
+    >
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Text className="text-zinc-900 dark:text-zinc-100 text-base">
-            ‹ Back
+        <View className="flex-row items-center gap-3">
+          <BackButton onPress={() => router.back()} />
+          <Text className="text-zinc-900 dark:text-zinc-100 text-lg font-semibold">
+            History
           </Text>
-        </Pressable>
+        </View>
         {metas.length > 0 ? (
           <Pressable onPress={confirmClearAll} hitSlop={8}>
             <Text className="text-red-600 dark:text-red-400 text-sm">

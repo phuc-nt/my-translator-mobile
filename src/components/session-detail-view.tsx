@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { BackButton } from "@/src/components/back-button";
 import { DetailChatTab } from "@/src/components/detail-chat-tab";
 import { DetailSummaryTab } from "@/src/components/detail-summary-tab";
 import { type DetailTab, DetailTabBar } from "@/src/components/detail-tab-bar";
@@ -69,41 +70,47 @@ export function SessionDetailView({
   return (
     <SafeAreaView
       className="flex-1 bg-white dark:bg-zinc-950"
-      edges={["bottom"]}
+      edges={["top", "bottom"]}
     >
-      <View className="flex-row items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
-        <Pressable onPress={onBack} hitSlop={8}>
-          <Text className="text-zinc-900 dark:text-zinc-100 text-base">
-            ‹ Back
+      <View className="flex-row items-center gap-3 px-4 py-3">
+        <BackButton onPress={onBack} />
+        <View className="flex-1">
+          <Text
+            numberOfLines={1}
+            className="text-zinc-900 dark:text-zinc-100 text-lg font-semibold"
+          >
+            {name || "Session"}
           </Text>
-        </Pressable>
-        <View className="flex-row items-center gap-4">
-          {openaiKey ? (
-            <Pressable onPress={autoName} disabled={autoNaming} hitSlop={8}>
-              {autoNaming ? (
-                <ActivityIndicator size="small" />
-              ) : (
-                <Text className="text-zinc-900 dark:text-zinc-100 text-sm">
-                  Auto-name
-                </Text>
-              )}
-            </Pressable>
-          ) : null}
-          <Pressable onPress={() => setRenaming(true)} hitSlop={8}>
-            <Text className="text-zinc-900 dark:text-zinc-100 text-sm">
-              Rename
-            </Text>
-          </Pressable>
           <Text className="text-zinc-500 dark:text-zinc-400 text-xs">
             {session.meta.rowCount} lines
           </Text>
         </View>
       </View>
-      {name ? (
-        <Text className="px-4 pt-2 text-zinc-900 dark:text-zinc-100 font-medium">
-          {name}
-        </Text>
-      ) : null}
+      <View className="flex-row items-center gap-2 px-4 pb-3 border-b border-zinc-200 dark:border-zinc-800">
+        {openaiKey ? (
+          <Pressable
+            onPress={autoName}
+            disabled={autoNaming}
+            className="px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 active:opacity-70"
+          >
+            {autoNaming ? (
+              <ActivityIndicator size="small" />
+            ) : (
+              <Text className="text-zinc-900 dark:text-zinc-100 text-sm">
+                Auto-name
+              </Text>
+            )}
+          </Pressable>
+        ) : null}
+        <Pressable
+          onPress={() => setRenaming(true)}
+          className="px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 active:opacity-70"
+        >
+          <Text className="text-zinc-900 dark:text-zinc-100 text-sm">
+            Rename
+          </Text>
+        </Pressable>
+      </View>
 
       <DetailTabBar value={tab} onChange={setTab} />
 
