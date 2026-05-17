@@ -29,8 +29,14 @@ export interface SessionMeta {
   name?: string;
 }
 
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export interface SavedSession {
   meta: SessionMeta;
   rows: TranscriptRow[];
   summary?: string;
+  chat?: ChatMessage[];
 }

@@ -12,6 +12,7 @@ import {
   setPref,
   setSecureKey,
 } from "@/src/lib/secure-keys";
+import { DEFAULT_CHAT_MODEL } from "@/src/lib/openai-chat";
 import type { Engine, LangCode, PanelMode } from "@/src/types";
 
 interface SettingsState {
@@ -22,6 +23,7 @@ interface SettingsState {
   targetLang: LangCode;
   panelMode: PanelMode;
   fontSize: number;
+  chatModel: string;
   loaded: boolean;
 }
 
@@ -32,6 +34,7 @@ interface SettingsActions {
   setTargetLang: (v: LangCode) => void;
   setPanelMode: (v: PanelMode) => void;
   setFontSize: (v: number) => void;
+  setChatModel: (v: string) => void;
 }
 
 const DEFAULT_STATE: SettingsState = {
@@ -45,6 +48,7 @@ const DEFAULT_STATE: SettingsState = {
   targetLang: "vi",
   panelMode: "single",
   fontSize: 18,
+  chatModel: DEFAULT_CHAT_MODEL,
   loaded: false,
 };
 
@@ -62,6 +66,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         targetLang,
         panelMode,
         fontSize,
+        chatModel,
       ] = await Promise.all([
         getSecureKey("soniox"),
         getSecureKey("openai"),
@@ -69,6 +74,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         getPref("targetLang"),
         getPref("panelMode"),
         getPref("fontSize"),
+        getPref("chatModel"),
       ]);
       setState({
         sonioxKey: sonioxKey ?? "",
@@ -78,6 +84,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         targetLang: targetLang ?? DEFAULT_STATE.targetLang,
         panelMode: panelMode === "dual" ? "dual" : "single",
         fontSize: fontSize ? parseInt(fontSize, 10) || DEFAULT_STATE.fontSize : DEFAULT_STATE.fontSize,
+        chatModel: chatModel || DEFAULT_STATE.chatModel,
         loaded: true,
       });
     })();
@@ -107,6 +114,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, fontSize: v }));
     setPref("fontSize", String(v)).catch(() => {});
   };
+  const setChatModel = (v: string) => {
+    setState((s) => ({ ...s, chatModel: v }));
+    setPref("chatModel", v).catch(() => {});
+  };
 
   return (
     <SettingsContext.Provider
@@ -118,6 +129,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         setTargetLang,
         setPanelMode,
         setFontSize,
+        setChatModel,
       }}
     >
       {children}

@@ -2,7 +2,7 @@ import { Link } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 
-import { summarizeTranscript } from "@/src/lib/openai-summary";
+import { summarizeTranscript } from "@/src/lib/openai-chat";
 import { formatTranscript } from "@/src/lib/transcript-format";
 import { useSession } from "@/src/state/session-context";
 import { useSettings } from "@/src/state/settings-context";
@@ -21,7 +21,7 @@ export function SummaryPanel({
   initialSummary?: string;
   onSaved?: (text: string) => void;
 }) {
-  const { openaiKey, targetLang } = useSettings();
+  const { openaiKey, targetLang, chatModel } = useSettings();
 
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState<string | null>(
@@ -54,6 +54,7 @@ export function SummaryPanel({
         apiKey: openaiKey,
         text: formatTranscript(rows),
         targetLang,
+        model: chatModel,
       });
       setSummary(text);
       onSaved?.(text);

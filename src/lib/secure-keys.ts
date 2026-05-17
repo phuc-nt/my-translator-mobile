@@ -41,6 +41,7 @@ const PREF_KEYS = {
   targetLang: "pref.targetLang",
   panelMode: "pref.panelMode",
   fontSize: "pref.fontSize",
+  chatModel: "pref.chatModel",
 } as const;
 
 export type PrefName = keyof typeof PREF_KEYS;

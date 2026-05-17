@@ -16,16 +16,22 @@ import { clearAllPrefs, clearAllSecureKeys } from "@/src/lib/secure-keys";
 import { useSettings } from "@/src/state/settings-context";
 import type { Engine, LangCode } from "@/src/types";
 
+// Models usable for summary / chat / auto-name. gpt-5-mini is the proven
+// default (fast + cheap); the others trade cost for depth on long sessions.
+const CHAT_MODELS = ["gpt-5-mini", "gpt-5", "gpt-4.1-mini"];
+
 export default function SettingsScreen() {
   const {
     sonioxKey,
     openaiKey,
     engine,
     targetLang,
+    chatModel,
     setSonioxKey,
     setOpenaiKey,
     setEngine,
     setTargetLang,
+    setChatModel,
   } = useSettings();
 
   // Both engines auto-detect source language. Share OpenAI's target list for
@@ -99,6 +105,24 @@ export default function SettingsScreen() {
             Billed to your key. OpenAI Realtime ≈ $4/hr.
           </Text>
         </Section>
+
+        {openaiKey ? (
+          <Section title="Assistant model">
+            <Row>
+              {CHAT_MODELS.map((m) => (
+                <Choice
+                  key={m}
+                  label={m}
+                  active={chatModel === m}
+                  onPress={() => setChatModel(m)}
+                />
+              ))}
+            </Row>
+            <Text className="text-zinc-500 text-xs mt-1">
+              Used for summary, chat, and auto-naming.
+            </Text>
+          </Section>
+        ) : null}
 
         <Pressable
           onPress={() => {

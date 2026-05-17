@@ -5,11 +5,17 @@ import {
   MAX_SUMMARY_CHARS,
   PREVIEW_CHARS,
   type Blob,
+  capChat,
   normalizeBlob,
   sanitizeRows,
   trimField,
 } from "@/src/lib/history-blob";
-import type { SavedSession, SessionMeta, TranscriptRow } from "@/src/types";
+import type {
+  ChatMessage,
+  SavedSession,
+  SessionMeta,
+  TranscriptRow,
+} from "@/src/types";
 
 const INDEX_KEY = "history.index";
 const sessionKey = (id: string) => `history.session.${id}`;
@@ -104,7 +110,12 @@ export async function getSession(id: string): Promise<SavedSession | null> {
     if (!raw) return null;
     const blob = normalizeBlob(JSON.parse(raw));
     if (!blob) return null;
-    return { meta, rows: blob.rows, summary: blob.summary };
+    return {
+      meta,
+      rows: blob.rows,
+      summary: blob.summary,
+      chat: blob.chat,
+    };
   } catch {
     return null;
   }
@@ -137,6 +148,28 @@ export async function saveSummary(
     const blob = normalizeBlob(JSON.parse(raw));
     if (!blob) return false;
     blob.summary = summary.slice(0, MAX_SUMMARY_CHARS);
+    await SecureStore.setItemAsync(
+      sessionKey(id),
+      JSON.stringify(blob satisfies Blob),
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Persist the session chat. Oldest turns are dropped to fit the cap. Returns
+// false if the session blob is missing or cannot be written. Never throws.
+export async function saveChat(
+  id: string,
+  messages: ChatMessage[],
+): Promise<boolean> {
+  try {
+    const raw = await SecureStore.getItemAsync(sessionKey(id));
+    if (!raw) return false;
+    const blob = normalizeBlob(JSON.parse(raw));
+    if (!blob) return false;
+    blob.chat = capChat(messages);
     await SecureStore.setItemAsync(
       sessionKey(id),
       JSON.stringify(blob satisfies Blob),
