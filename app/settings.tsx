@@ -10,6 +10,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { router } from "expo-router";
+
+import { BackButton } from "@/src/components/back-button";
 import { SettingsFooter } from "@/src/components/settings-footer";
 import { OPENAI_LANGS, type Language } from "@/src/lib/languages";
 import { clearAllPrefs, clearAllSecureKeys } from "@/src/lib/secure-keys";
@@ -39,7 +42,16 @@ export default function SettingsScreen() {
   const langs: Language[] = OPENAI_LANGS;
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-zinc-950" edges={["bottom"]}>
+    <SafeAreaView
+      className="flex-1 bg-white dark:bg-zinc-950"
+      edges={["top", "bottom"]}
+    >
+      <View className="flex-row items-center gap-3 px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
+        <BackButton onPress={() => router.back()} />
+        <Text className="text-zinc-900 dark:text-zinc-100 text-lg font-semibold">
+          Settings
+        </Text>
+      </View>
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}

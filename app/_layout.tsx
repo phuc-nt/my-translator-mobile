@@ -17,10 +17,7 @@ export default function RootLayout() {
             <StatusBar style="auto" />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="index" />
-              <Stack.Screen
-                name="settings"
-                options={{ presentation: "modal", headerShown: true, title: "Settings" }}
-              />
+              <Stack.Screen name="settings" options={{ title: "Settings" }} />
               <Stack.Screen name="history" options={{ title: "History" }} />
             </Stack>
           </SessionProvider>
