@@ -29,7 +29,9 @@ export class AudioCapture {
     AudioManager.setAudioSessionOptions({
       iosCategory: "playAndRecord",
       iosMode: "spokenAudio",
-      iosOptions: ["allowBluetooth", "defaultToSpeaker"],
+      // SDK 56 renamed "allowBluetooth" → "allowBluetoothHFP" (Hands-Free
+      // Profile — the BT mode that enables mic input, needed for playAndRecord).
+      iosOptions: ["allowBluetoothHFP", "defaultToSpeaker"],
     });
     await AudioManager.setAudioSessionActivity(true);
 

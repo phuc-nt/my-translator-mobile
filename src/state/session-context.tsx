@@ -195,6 +195,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
     captureRef.current = null;
 
+    // Stop any in-flight TTS so narration doesn't keep playing after Stop.
+    try {
+      const { edgeTTSPlayer } = await import(
+        "@/src/lib/edge-tts-audio-player"
+      );
+      await edgeTTSPlayer.stop();
+    } catch {
+      /* ignore — player may not have been used this session */
+    }
+    try {
+      const Speech = await import("expo-speech");
+      Speech.stop();
+    } catch {
+      /* ignore — expo-speech may not be loaded */
+    }
+
     provisionalIdRef.current = null;
 
     // Promote any leftover provisional rows to final (keep the text, drop the
@@ -221,12 +237,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   };
 
   const speakTTS = async (text: string) => {
-    console.log("[TTS] speakTTS", { ttsProvider, ttsMuted, text: text.slice(0, 30) });
+    // No content logging here — translations are user data (bring-your-own-key,
+    // no backend); never write them to the console.
     if (ttsProvider === "none" || ttsMuted || !text.trim()) return;
 
     if (ttsProvider === "device") {
       try {
-        console.log("[TTS] Using device voice");
         const Speech = await import("expo-speech");
         Speech.speak(text, {
           language: targetLang,
@@ -237,7 +253,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
     } else if (ttsProvider === "edge") {
       try {
-        console.log("[TTS] Using Edge TTS");
         const { edgeTTS } = await import("@/src/engines/edge-tts-client");
         const { edgeTTSPlayer } = await import(
           "@/src/lib/edge-tts-audio-player"
@@ -246,7 +261,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const voice = ttsVoice || getDefaultVoice(targetLang);
         edgeTTS.configure({ voice, rate: ttsRate });
         const audio = await edgeTTS.speak(text);
-        console.log("[TTS] Edge audio received", audio.length);
         await edgeTTSPlayer.enqueue(audio);
       } catch (err) {
         console.warn("[TTS] Edge error:", (err as Error).message);

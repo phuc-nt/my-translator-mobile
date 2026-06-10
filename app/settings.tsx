@@ -281,6 +281,12 @@ export default function SettingsScreen() {
                 ? "Free Microsoft Edge TTS. Select voice for target language."
                 : "Enable to hear translated text spoken aloud."}
           </Text>
+          {ttsProvider !== "none" ? (
+            <Text className="text-amber-600 dark:text-amber-500 text-xs mt-1">
+              Use headphones — speaker output can leak into the mic and get
+              re-translated.
+            </Text>
+          ) : null}
         </Section>
 
         <Section title="App updates">
