@@ -108,3 +108,28 @@ export const QWEN_LANGS: Language[] = [
 export function langName(code: string, list: Language[]): string {
   return list.find((l) => l.code === code)?.name ?? code;
 }
+
+// Edge TTS voice mapping: language code → Azure Neural voice ID
+// User requirement: vi→NamMinh (male), en→Jenny (female)
+const EDGE_TTS_VOICES: Record<string, string> = {
+  vi: "vi-VN-NamMinhNeural",
+  en: "en-US-JennyNeural",
+  ja: "ja-JP-NanamiNeural",
+  ko: "ko-KR-SunHiNeural",
+  zh: "zh-CN-XiaoxiaoNeural",
+  yue: "zh-HK-HiuGaaiNeural",
+  es: "es-ES-ElviraNeural",
+  fr: "fr-FR-DeniseNeural",
+  de: "de-DE-KatjaNeural",
+  ru: "ru-RU-SvetlanaNeural",
+  pt: "pt-BR-FranciscaNeural",
+  it: "it-IT-ElsaNeural",
+  id: "id-ID-GadisNeural",
+  th: "th-TH-PremwadeeNeural",
+  hi: "hi-IN-SwaraNeural",
+  ar: "ar-SA-ZariyahNeural",
+};
+
+export function getEdgeTTSVoice(langCode: string): string {
+  return EDGE_TTS_VOICES[langCode] ?? EDGE_TTS_VOICES.en;
+}

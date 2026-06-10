@@ -25,6 +25,7 @@ import {
   type Language,
 } from "@/src/lib/languages";
 import { clearAllPrefs, clearAllSecureKeys } from "@/src/lib/secure-keys";
+import { getVoicesForLang, getDefaultVoice } from "@/src/lib/edge-tts-voices";
 import { useSettings } from "@/src/state/settings-context";
 import type { Engine } from "@/src/types";
 
@@ -53,6 +54,9 @@ export default function SettingsScreen() {
     sourceLang,
     targetLang,
     chatModel,
+    ttsProvider,
+    ttsRate,
+    ttsVoice,
     setSonioxKey,
     setOpenaiKey,
     setQwenKey,
@@ -60,6 +64,9 @@ export default function SettingsScreen() {
     setSourceLang,
     setTargetLang,
     setChatModel,
+    setTTSProvider,
+    setTTSRate,
+    setTTSVoice,
   } = useSettings();
 
   const langs: Language[] = langsForEngine(engine);
@@ -215,6 +222,67 @@ export default function SettingsScreen() {
           </Text>
         </Section>
 
+        <Section title="Text-to-Speech">
+          <Row>
+            <Choice
+              label="Off"
+              active={ttsProvider === "none"}
+              onPress={() => setTTSProvider("none")}
+            />
+            <Choice
+              label="Device"
+              active={ttsProvider === "device"}
+              onPress={() => setTTSProvider("device")}
+            />
+            <Choice
+              label="Edge TTS"
+              active={ttsProvider === "edge"}
+              onPress={() => setTTSProvider("edge")}
+            />
+          </Row>
+          {ttsProvider === "edge" ? (
+            <EdgeVoicePicker
+              targetLang={targetLang}
+              selectedVoice={ttsVoice}
+              onSelect={setTTSVoice}
+            />
+          ) : null}
+          {ttsProvider !== "none" ? (
+            <View className="mt-3">
+              <Text className="text-zinc-700 dark:text-zinc-300 text-sm mb-2">
+                Speed: {ttsRate >= 0 ? `+${ttsRate}%` : `${ttsRate}%`}
+              </Text>
+              <View className="flex-row items-center gap-2">
+                <Pressable
+                  onPress={() => setTTSRate(Math.max(-50, ttsRate - 10))}
+                  className="w-10 h-8 rounded border border-zinc-300 dark:border-zinc-700 items-center justify-center"
+                >
+                  <Text className="text-zinc-700 dark:text-zinc-300">−</Text>
+                </Pressable>
+                <View className="flex-1 h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full">
+                  <View
+                    className="h-2 bg-zinc-600 dark:bg-zinc-400 rounded-full"
+                    style={{ width: `${((ttsRate + 50) / 150) * 100}%` }}
+                  />
+                </View>
+                <Pressable
+                  onPress={() => setTTSRate(Math.min(100, ttsRate + 10))}
+                  className="w-10 h-8 rounded border border-zinc-300 dark:border-zinc-700 items-center justify-center"
+                >
+                  <Text className="text-zinc-700 dark:text-zinc-300">+</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+          <Text className="text-zinc-500 text-xs mt-2">
+            {ttsProvider === "device"
+              ? "Uses iOS native voice. Quality depends on installed voices."
+              : ttsProvider === "edge"
+                ? "Free Microsoft Edge TTS. Select voice for target language."
+                : "Enable to hear translated text spoken aloud."}
+          </Text>
+        </Section>
+
         <Section title="App updates">
           <UpdateRow />
         </Section>
@@ -335,6 +403,49 @@ function Choice({
   );
 }
 
+function EdgeVoicePicker({
+  targetLang,
+  selectedVoice,
+  onSelect,
+}: {
+  targetLang: string;
+  selectedVoice: string;
+  onSelect: (v: string) => void;
+}) {
+  const voices = getVoicesForLang(targetLang);
+  const currentVoice = selectedVoice || getDefaultVoice(targetLang);
+
+  return (
+    <View className="mt-3">
+      <Text className="text-zinc-700 dark:text-zinc-300 text-sm mb-2">
+        Voice
+      </Text>
+      <View className="flex-row flex-wrap gap-2">
+        {voices.map((v) => (
+          <Pressable
+            key={v.id}
+            onPress={() => onSelect(v.id)}
+            className={
+              currentVoice === v.id
+                ? "px-3 py-2 rounded-lg bg-zinc-900 dark:bg-white"
+                : "px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700"
+            }
+          >
+            <Text
+              className={
+                currentVoice === v.id
+                  ? "text-white dark:text-zinc-900 font-medium"
+                  : "text-zinc-900 dark:text-zinc-100"
+              }
+            >
+              {v.name} {v.gender === "male" ? "♂" : "♀"}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 // Re-export so type imports stay co-located with consumers if needed later.
 export type { Engine };

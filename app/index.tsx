@@ -30,6 +30,9 @@ export default function TranslateScreen() {
     loaded,
     setFontSize,
     setPanelMode,
+    ttsProvider,
+    ttsMuted,
+    setTTSMuted,
   } = useSettings();
 
   const isLive = status === "streaming" || status === "connecting";
@@ -75,6 +78,9 @@ export default function TranslateScreen() {
         showMute={engineHasVoice(engine)}
         muted={muted}
         onToggleMute={() => setMuted(!muted)}
+        showTTSMute={ttsProvider === "edge"}
+        ttsMuted={ttsMuted}
+        onToggleTTSMute={() => setTTSMuted(!ttsMuted)}
       />
 
       <View className="flex-row items-center justify-between px-4 py-2 border-b border-zinc-100 dark:border-zinc-900">
@@ -201,6 +207,9 @@ function Header({
   showMute,
   muted,
   onToggleMute,
+  showTTSMute,
+  ttsMuted,
+  onToggleTTSMute,
 }: {
   engine: Engine;
   sourceLang: string;
@@ -209,6 +218,9 @@ function Header({
   showMute: boolean;
   muted: boolean;
   onToggleMute: () => void;
+  showTTSMute: boolean;
+  ttsMuted: boolean;
+  onToggleTTSMute: () => void;
 }) {
   const dot =
     status === "streaming"
@@ -227,20 +239,27 @@ function Header({
         </Text>
       </View>
       <View className="flex-row items-center gap-2">
+        {showTTSMute ? (
+          <IconButton
+            glyph={ttsMuted ? "♪" : "♫"}
+            label={ttsMuted ? "TTS Off" : "TTS On"}
+            onPress={onToggleTTSMute}
+          />
+        ) : null}
         {showMute ? (
           <IconButton
-            glyph={muted ? "🔇" : "🔊"}
+            glyph={muted ? "M" : "▶"}
             label={muted ? "Unmute" : "Mute"}
             onPress={onToggleMute}
           />
         ) : null}
         <IconButton
-          glyph="🕘"
+          glyph="H"
           label="History"
           onPress={() => router.push("/history")}
         />
         <IconButton
-          glyph="⚙️"
+          glyph="S"
           label="Settings"
           onPress={() => router.push("/settings")}
         />

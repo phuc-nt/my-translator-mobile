@@ -6,14 +6,16 @@ import {
   type ReactNode,
 } from "react";
 
+import { DEFAULT_CHAT_MODEL } from "@/src/lib/openai-chat";
 import {
   getPref,
   getSecureKey,
   setPref,
   setSecureKey,
 } from "@/src/lib/secure-keys";
-import { DEFAULT_CHAT_MODEL } from "@/src/lib/openai-chat";
 import type { Engine, LangCode, PanelMode } from "@/src/types";
+
+export type TTSProvider = "none" | "device" | "edge";
 
 interface SettingsState {
   sonioxKey: string;
@@ -25,6 +27,10 @@ interface SettingsState {
   panelMode: PanelMode;
   fontSize: number;
   chatModel: string;
+  ttsProvider: TTSProvider;
+  ttsRate: number;
+  ttsVoice: string;
+  ttsMuted: boolean;
   loaded: boolean;
 }
 
@@ -38,6 +44,10 @@ interface SettingsActions {
   setPanelMode: (v: PanelMode) => void;
   setFontSize: (v: number) => void;
   setChatModel: (v: string) => void;
+  setTTSProvider: (v: TTSProvider) => void;
+  setTTSRate: (v: number) => void;
+  setTTSVoice: (v: string) => void;
+  setTTSMuted: (v: boolean) => void;
 }
 
 const DEFAULT_STATE: SettingsState = {
@@ -54,10 +64,16 @@ const DEFAULT_STATE: SettingsState = {
   panelMode: "single",
   fontSize: 18,
   chatModel: DEFAULT_CHAT_MODEL,
+  ttsProvider: "none",
+  ttsRate: 20,
+  ttsVoice: "",
+  ttsMuted: false,
   loaded: false,
 };
 
-const SettingsContext = createContext<(SettingsState & SettingsActions) | null>(null);
+const SettingsContext = createContext<(SettingsState & SettingsActions) | null>(
+  null,
+);
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SettingsState>(DEFAULT_STATE);
@@ -74,6 +90,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         panelMode,
         fontSize,
         chatModel,
+        ttsProvider,
+        ttsRate,
+        ttsVoice,
+        ttsMuted,
       ] = await Promise.all([
         getSecureKey("soniox"),
         getSecureKey("openai"),
@@ -84,6 +104,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         getPref("panelMode"),
         getPref("fontSize"),
         getPref("chatModel"),
+        getPref("ttsProvider"),
+        getPref("ttsRate"),
+        getPref("ttsVoice"),
+        getPref("ttsMuted"),
       ]);
       setState({
         sonioxKey: sonioxKey ?? "",
@@ -93,8 +117,21 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         sourceLang: sourceLang ?? DEFAULT_STATE.sourceLang,
         targetLang: targetLang ?? DEFAULT_STATE.targetLang,
         panelMode: panelMode === "dual" ? "dual" : "single",
-        fontSize: fontSize ? parseInt(fontSize, 10) || DEFAULT_STATE.fontSize : DEFAULT_STATE.fontSize,
+        fontSize: fontSize
+          ? parseInt(fontSize, 10) || DEFAULT_STATE.fontSize
+          : DEFAULT_STATE.fontSize,
         chatModel: chatModel || DEFAULT_STATE.chatModel,
+        ttsProvider:
+          ttsProvider === "edge"
+            ? "edge"
+            : ttsProvider === "device"
+              ? "device"
+              : "none",
+        ttsRate: ttsRate
+          ? parseInt(ttsRate, 10) || DEFAULT_STATE.ttsRate
+          : DEFAULT_STATE.ttsRate,
+        ttsVoice: ttsVoice ?? "",
+        ttsMuted: ttsMuted === "true",
         loaded: true,
       });
     })();
@@ -136,6 +173,22 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, chatModel: v }));
     setPref("chatModel", v).catch(() => {});
   };
+  const setTTSProvider = (v: TTSProvider) => {
+    setState((s) => ({ ...s, ttsProvider: v }));
+    setPref("ttsProvider", v).catch(() => {});
+  };
+  const setTTSRate = (v: number) => {
+    setState((s) => ({ ...s, ttsRate: v }));
+    setPref("ttsRate", String(v)).catch(() => {});
+  };
+  const setTTSVoice = (v: string) => {
+    setState((s) => ({ ...s, ttsVoice: v }));
+    setPref("ttsVoice", v).catch(() => {});
+  };
+  const setTTSMuted = (v: boolean) => {
+    setState((s) => ({ ...s, ttsMuted: v }));
+    setPref("ttsMuted", String(v)).catch(() => {});
+  };
 
   return (
     <SettingsContext.Provider
@@ -150,6 +203,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         setPanelMode,
         setFontSize,
         setChatModel,
+        setTTSProvider,
+        setTTSRate,
+        setTTSVoice,
+        setTTSMuted,
       }}
     >
       {children}

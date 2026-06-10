@@ -61,6 +61,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     sourceLang,
     targetLang,
     chatModel,
+    ttsProvider,
+    ttsRate,
+    ttsVoice,
+    ttsMuted,
   } = useSettings();
 
   const [status, setStatus] = useState<SessionStatus>("idle");
@@ -216,6 +220,40 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const speakTTS = async (text: string) => {
+    console.log("[TTS] speakTTS", { ttsProvider, ttsMuted, text: text.slice(0, 30) });
+    if (ttsProvider === "none" || ttsMuted || !text.trim()) return;
+
+    if (ttsProvider === "device") {
+      try {
+        console.log("[TTS] Using device voice");
+        const Speech = await import("expo-speech");
+        Speech.speak(text, {
+          language: targetLang,
+          rate: 1 + ttsRate / 100,
+        });
+      } catch (err) {
+        console.warn("[TTS] Device error:", (err as Error).message);
+      }
+    } else if (ttsProvider === "edge") {
+      try {
+        console.log("[TTS] Using Edge TTS");
+        const { edgeTTS } = await import("@/src/engines/edge-tts-client");
+        const { edgeTTSPlayer } = await import(
+          "@/src/lib/edge-tts-audio-player"
+        );
+        const { getDefaultVoice } = await import("@/src/lib/edge-tts-voices");
+        const voice = ttsVoice || getDefaultVoice(targetLang);
+        edgeTTS.configure({ voice, rate: ttsRate });
+        const audio = await edgeTTS.speak(text);
+        console.log("[TTS] Edge audio received", audio.length);
+        await edgeTTSPlayer.enqueue(audio);
+      } catch (err) {
+        console.warn("[TTS] Edge error:", (err as Error).message);
+      }
+    }
+  };
+
   const startSoniox = async (): Promise<void> => {
     if (!sonioxKey) {
       setStatus("error");
@@ -257,6 +295,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           translation: text,
           timestamp: Date.now(),
         });
+        speakTTS(text);
       },
       onProvisional: (text) => upsertProvisional(text),
     });
@@ -329,6 +368,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           translation: tgt,
           timestamp: Date.now(),
         });
+        if (tgt) speakTTS(tgt);
       },
     });
 
@@ -396,6 +436,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           translation: tgt,
           timestamp: Date.now(),
         });
+        if (tgt) speakTTS(tgt);
       },
     });
 

@@ -48,3 +48,7 @@ benchmark-*.json
 
 # Planning / report scratch (local only — shared docs live in ./docs)
 plans/
+.repomixignore
+CLAUDE.local.md
+CLAUDE.md
+.claude

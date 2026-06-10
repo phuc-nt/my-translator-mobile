@@ -43,6 +43,10 @@ const PREF_KEYS = {
   panelMode: "pref.panelMode",
   fontSize: "pref.fontSize",
   chatModel: "pref.chatModel",
+  ttsProvider: "pref.ttsProvider",
+  ttsRate: "pref.ttsRate",
+  ttsVoice: "pref.ttsVoice",
+  ttsMuted: "pref.ttsMuted",
 } as const;
 
 export type PrefName = keyof typeof PREF_KEYS;
