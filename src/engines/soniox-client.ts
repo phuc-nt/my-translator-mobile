@@ -99,7 +99,7 @@ export class SonioxClient {
     newWs.onopen = () => {
       const cfg: Record<string, unknown> = {
         api_key: config.apiKey,
-        model: "stt-rt-v4",
+        model: "stt-rt-v5",
         audio_format: "pcm_s16le",
         sample_rate: 16000,
         num_channels: 1,
